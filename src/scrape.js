@@ -6,7 +6,7 @@ const path = require('path');
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ acceptDownloads: true });
 
-  // Get pdf list
+  // fetch the list page
   const listPage = await context.newPage();
   const listUrl = 'https://npra.gov.my/index.php/en/informationen/new-products-indication/new-products-approved-quest3.html';
 
@@ -21,7 +21,7 @@ const path = require('path');
   );
   await listPage.close();
 
-  // get file from DCA404 to the latest
+  // filter DCA404+ and sort ascending
   const target = links
     .map(link => {
       const m = link.text.match(/^DCA(\d+)$/);
@@ -31,7 +31,7 @@ const path = require('path');
     .filter(item => item.dca >= 404)
     .sort((a, b) => a.dca - b.dca);
 
-  // 先检测：哪些未下载
+  // detect which PDFs are not yet downloaded
   const newItems = target.filter(item => {
     const outputPath = path.join('./downloads', `${item.text}.pdf`);
     return !fs.existsSync(outputPath);
@@ -47,7 +47,7 @@ const path = require('path');
 
   console.log(`Downloading: ${newItems[0].text} → ${newItems[newItems.length - 1].text}`);
 
-  // Download loop
+  // download the remaining PDFs
   fs.mkdirSync('./downloads', { recursive: true });
 
   for (const item of newItems) {

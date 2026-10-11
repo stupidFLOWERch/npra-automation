@@ -5,7 +5,7 @@ import re
 
 DB_PATH = 'npra.db'
 
-# ---- 1. 建表 ----
+# ---- 1. Create table ----
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('''
@@ -26,10 +26,10 @@ def init_db():
     conn.commit()
     return conn
 
-# ---- 2. 解析一个 PDF ----
+# ---- 2. Parse a single PDF ----
 def parse_pdf(pdf_path, dca):
     records = []
-    global_col_idx = None   # 全局表头索引，只找一次
+    global_col_idx = None   # column index cache, resolved once from the first header
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             tables = page.extract_tables()
@@ -37,19 +37,19 @@ def parse_pdf(pdf_path, dca):
                 if not table or len(table) < 2:
                     continue
 
-                # 每页都判断：第 0 行是不是表头
+                # check whether row 0 of this page is a header
                 col_idx = find_column_indexes(table[0])
 
                 if col_idx is not None:
-                    # 这页有表头
-                    global_col_idx = col_idx   # 更新全局索引
-                    data_start = 1             # 跳过表头
+                    # this page has a header
+                    global_col_idx = col_idx   # update the cached column index
+                    data_start = 1             # skip the header row
                 else:
-                    # 这页没表头
+                    # this page has no header (continuation page)
                     if global_col_idx is None:
-                        continue                # 还没找到表头，跳过
+                        continue                # no header found yet, skip
                     col_idx = global_col_idx
-                    data_start = 0             # 从第 0 行开始（都是数据）
+                    data_start = 0             # all rows are data
 
                 for row in table[data_start:]:
                     if len(row) < max(col_idx.values()) + 1:
@@ -72,12 +72,12 @@ def parse_pdf(pdf_path, dca):
 
 
 def find_column_indexes(header):
-    """从表头找到每个字段的列索引"""
-    # 规范化表头文字（去空格、换行、转小写）
+    """Resolve column index for each field from the header row."""
+    # normalize header text (trim, collapse whitespace, lowercase)
     normalized = [clean(h).lower() if h else '' for h in header]
 
     def find(*keywords):
-        """找第一个包含任一关键词的列"""
+        """Return the index of the first column containing any keyword."""
         for i, h in enumerate(normalized):
             for kw in keywords:
                 if kw in h:
@@ -95,7 +95,7 @@ def find_column_indexes(header):
         'expiry_date': find('tarikh luput'),
     }
 
-    # 如果关键字段找不到，返回 None
+    # if any key field is missing, treat the row as not a header
     if any(v is None for v in idx.values()):
         return None
 
@@ -104,26 +104,26 @@ def find_column_indexes(header):
 def clean(s):
     if s is None:
         return ''
-    # 先处理「连字符 + 换行」：直接去掉换行，不加空格
+    # join hyphenated line breaks without inserting a space
     s = re.sub(r'-\s*\n\s*', '-', s)
-    # 剩下的换行 → 空格
+    # remaining newlines -> space
     s = s.replace('\n', ' ')
-    # 多空白 → 单空格
+    # collapse multiple whitespace into a single space
     return re.sub(r'\s+', ' ', s).strip()
-    
-# ---- 3. 从文件名拿 DCA 编号 ----
+
+# ---- 3. Extract DCA code from filename ----
 def dca_from_filename(filename):
     m = re.search(r'DCA(\d+)', filename, re.IGNORECASE)
     return f'DCA{m.group(1)}' if m else None
 
-# ---- 4. 主流程 ----
+# ---- 4. Main ----
 def main():
     conn = init_db()
     downloads = 'downloads'
     files = sorted(f for f in os.listdir(downloads) if f.endswith('.pdf'))
     print(f'Found {len(files)} PDFs')
 
-    # 先检测：哪些 DCA 未入库
+    # detect which DCAs are not yet in the database
     new_files = []
     for filename in files:
         dca = dca_from_filename(filename)
@@ -147,7 +147,7 @@ def main():
         conn.close()
         return
 
-    # 只解析新的
+    # parse only the new files
     for filename, dca in new_files:
         path = os.path.join(downloads, filename)
         try:
@@ -169,7 +169,7 @@ def main():
         except Exception as e:
             print(f'[{dca}] FAILED: {e}')
 
-    # 统计
+    # summary
     total = conn.execute('SELECT COUNT(*) FROM products').fetchone()[0]
     print(f'\nTotal records in DB: {total}')
     conn.close()

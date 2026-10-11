@@ -10,22 +10,22 @@ const { chromium } = require('playwright');
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(3000);
 
-  // 抓页面上所有指向 .pdf 的链接
+  // grab all links ending in .pdf
   const links = await page.$$eval('a', els =>
     els
       .filter(el => el.href && el.href.toLowerCase().endsWith('.pdf'))
       .map(el => ({ text: el.textContent.trim(), href: el.href }))
   );
 
-  const target = links.map(link =>{
-    // m[0] = full text
-    // m[1] = (\d+)
+  // filter DCA404+ and sort ascending
+  const target = links.map(link => {
+    // m[0] = full match, m[1] = captured digits
     const m = link.text.match(/^DCA(\d+)$/);
-    return m ? { dca: parseInt(m[1], 10), text: link.text, href: link.href}: null;
+    return m ? { dca: parseInt(m[1], 10), text: link.text, href: link.href } : null;
   })
   .filter(item => item !== null)
-  .filter(item => item.dca >=404)
-  .sort((a,b) => a.dca -b.dca);
+  .filter(item => item.dca >= 404)
+  .sort((a, b) => a.dca - b.dca);
 
   console.log('To download:', target.length);
   console.log(JSON.stringify(target, null, 2));
