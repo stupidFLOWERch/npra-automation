@@ -17,6 +17,7 @@ Playwright + Python pipeline that downloads approved product PDFs from NPRA and 
 ## Setup
 ### 1. Install Node deps
 ```bash
+cd npra-automation
 npm install
 ```
 ### 2. Install Playwright browser
