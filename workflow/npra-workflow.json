@@ -1,0 +1,78 @@
+{
+  "name": "npra-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_RUNNER_TOKEN"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        208,
+        32
+      ],
+      "id": "f2e3ea88-f521-40eb-a6ed-4d6cbbe88555",
+      "name": "Detect and process new docs"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 18,
+              "triggerAtMinute": 45
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        32
+      ],
+      "id": "8783eae7-8be5-460f-807d-4509f8ba0cbb",
+      "name": "Daily Trigger 645pm"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Trigger 645pm": {
+      "main": [
+        [
+          {
+            "node": "Detect and process new docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kuala_Lumpur",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "121a6c63-a05a-4bae-a108-3e288e372ec9",
+  "nodeGroups": [],
+  "id": "wjAFTsBcfrgQHa3Y",
+  "tags": []
+}
